@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calco — Formularios de seguro sin ida y vuelta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Archivo:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/calco.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="shell row">
+    <a class="brand" href="/"><span class="mark"></span>Calco</a>
+    <span class="sub">para agentes de seguro</span>
+  </div>
+</header>
+
+<!-- ============ LANDING ============ -->
+<div id="v-landing">
+  <div class="shell">
+    <section class="hero">
+      <div class="copy">
+        <span class="tag">Solicitudes de seguro sin ida y vuelta</span>
+        <h1>Tu cliente completa. Vos revisás. <span class="hl">La aseguradora recibe su PDF.</span></h1>
+        <p>Subí la solicitud en PDF de cualquier aseguradora y Calco la convierte en un formulario simple, paso a paso. Le mandás un link a tu cliente y, cuando termina, el PDF original llega completo a tu correo — listo para chequear, firmar lo que falte y presentar.</p>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+          <button class="btn lg" onclick="startFlow()">Crear el link para mi cliente</button>
+          <span style="color:var(--ink-soft);font-size:14px;">Sin instalar nada. Funciona con PDFs protegidos.</span>
+        </div>
+      </div>
+      <div class="visual">
+        <div class="card" style="border-color:var(--ink);box-shadow:0 14px 40px rgba(22,35,58,.14);max-width:360px;">
+          <div class="progress"><i class="done"></i><i class="done"></i><i class="now"></i><i></i><i></i></div>
+          <div class="steplbl">Paso 3 de 5 · Lo ve tu cliente</div>
+          <h2 style="font-size:21px;margin-bottom:14px;">¿Tiene actualmente otra cobertura médica?</h2>
+          <div class="choices" style="margin-bottom:14px;">
+            <label class="choice"><input type="radio" name="demo" checked> Sí</label>
+            <label class="choice"><input type="radio" name="demo"> No</label>
+          </div>
+          <div class="q"><label>Nombre de la compañía</label><input type="text" value="Seguros del Plata" readonly tabindex="-1"></div>
+          <button class="btn alt" style="width:100%;" onclick="startFlow()">Siguiente</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="band">
+    <div class="shell">
+      <span class="tag">Cómo funciona</span>
+      <h2 style="margin-top:8px;">Tres pasos, cero persecución</h2>
+      <div class="grid3">
+        <div class="stepcard">
+          <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16233A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M12 18v-6"/><path d="M9 15l3 3 3-3"/></svg></div>
+          <h3>1. Subí la solicitud en PDF</h3>
+          <p>La misma que te da la aseguradora. Calco lee los campos y arma la entrevista — también con archivos protegidos o con contraseña.</p>
+        </div>
+        <div class="stepcard">
+          <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16233A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></div>
+          <h3>2. Mandale el link a tu cliente</h3>
+          <p>Por WhatsApp o correo. Tu cliente responde preguntas claras, de a una, desde el teléfono — sin imprimir ni escanear.</p>
+        </div>
+        <div class="stepcard">
+          <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16233A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 7l10 6 10-6"/></svg></div>
+          <h3>3. El PDF completo llega a tu mail</h3>
+          <p>Las respuestas quedan estampadas en el formulario original de la aseguradora. Lo revisás, completás lo que falte y lo presentás.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="shell">
+    <div class="benefits">
+      <div class="side">
+        <span class="tag">Para tu operación</span>
+        <h2>Hecho para cómo trabaja un agente</h2>
+        <p>Calco no reemplaza tu criterio: te saca de encima la parte mecánica de perseguir formularios y transcribir respuestas.</p>
+      </div>
+      <div class="list">
+        <div class="bcard">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D9AE12" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><path d="M20 6L9 17l-5-5"/></svg>
+          <div><b>El mismo PDF que exige la aseguradora</b><p>Nada de re-transcribir: las respuestas se pegan casilla por casilla en el formulario original, con su formato y su protección intactos.</p></div>
+        </div>
+        <div class="bcard">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D9AE12" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><path d="M20 6L9 17l-5-5"/></svg>
+          <div><b>Menos ida y vuelta con cada cliente</b><p>Se acabaron las fotos de formularios por WhatsApp, la letra ilegible y los campos en blanco que te obligan a llamar de nuevo.</p></div>
+        </div>
+        <div class="bcard">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D9AE12" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><path d="M20 6L9 17l-5-5"/></svg>
+          <div><b>Vos tenés la última palabra</b><p>El PDF completo te llega a vos, no a la aseguradora. Revisás, corregís y completás lo que falte antes de presentarlo.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-band">
+    <div class="shell">
+      <h2>Probalo con la solicitud que tengas a mano</h2>
+      <p>Subí un PDF real de una aseguradora y mirá el formulario que le llegaría a tu cliente. Tarda menos de un minuto.</p>
+      <button class="btn alt lg" onclick="startFlow()">Crear el link para mi cliente</button>
+    </div>
+  </section>
+
+  <div class="shell">
+    <div class="foot">
+      <a class="brand dark" href="/" style="font-size:16px;"><span class="mark"></span>Calco</a>
+      <span>· Formularios de seguro sin fricción</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============ FLUJO DEL AGENTE ============ -->
+<main class="stage hidden" id="v-flow">
+  <div class="shell narrow">
+
+    <section id="v-upload">
+      <span class="tag">Paso 1 · Tu formulario</span>
+      <h1 style="margin:12px 0 14px;font-size:clamp(28px,4vw,40px);">Subí la solicitud en PDF</h1>
+      <p style="color:var(--ink-soft);max-width:56ch;">La leemos acá mismo, en tu navegador, y armamos la entrevista que va a ver tu cliente. Funciona también con archivos protegidos o con contraseña.</p>
+      <div class="drop" id="drop">
+        <div class="ico"></div>
+        <h2>Arrastrá tu PDF acá</h2>
+        <p>Tiene que ser un PDF con campos completables.</p>
+        <button class="btn alt lg" id="pick">Elegir archivo</button>
+        <input type="file" id="file" accept="application/pdf" class="hidden">
+      </div>
+      <div id="up-msg"></div>
+    </section>
+
+    <section id="v-analyze" class="hidden">
+      <span class="tag">Paso 1 · Tu formulario</span>
+      <h1 style="margin:12px 0 20px;font-size:clamp(28px,4vw,40px);">Leyendo el formulario…</h1>
+      <div class="analyze">
+        <div id="a-status" style="font-weight:600;">Abriendo el documento</div>
+        <div class="bar"><i id="a-bar"></i></div>
+        <div style="font-size:13px;color:var(--ink-soft);" id="a-sub">&nbsp;</div>
+        <div class="log" id="a-log"></div>
+      </div>
+      <div id="an-msg"></div>
+    </section>
+
+    <section id="v-create" class="hidden">
+      <span class="tag">Paso 2 · El link</span>
+      <h1 style="margin:12px 0 14px;font-size:clamp(28px,4vw,40px);">Listo para tu cliente</h1>
+      <div class="msg ok" id="c-resumen"></div>
+      <div class="card" style="margin-top:22px;">
+        <div class="q">
+          <label>Nombre de tu cliente</label>
+          <input type="text" id="c-cliente" placeholder="Ej.: María González">
+          <div class="hint">Aparece en el formulario para que sepa que es para él/ella.</div>
+        </div>
+        <div class="q">
+          <label>Tu correo electrónico</label>
+          <input type="email" id="c-email" placeholder="vos@tuagencia.com">
+          <div class="hint">Acá te llega el PDF completo cuando tu cliente termine.</div>
+        </div>
+        <div class="q">
+          <label>Tu nombre (opcional)</label>
+          <input type="text" id="c-agente" placeholder="Ej.: Jose I.">
+          <div class="hint">Para que el formulario diga de parte de quién viene.</div>
+        </div>
+        <button class="btn alt lg" id="c-crear" style="width:100%;">Generar el link</button>
+      </div>
+      <div id="c-msg"></div>
+    </section>
+
+    <section id="v-links" class="hidden">
+      <span class="tag">Listo</span>
+      <h1 style="margin:12px 0 14px;font-size:clamp(28px,4vw,40px);">Mandale este link a tu cliente</h1>
+      <div class="card">
+        <b style="font-size:16px;">Link para tu cliente</b>
+        <p style="color:var(--ink-soft);font-size:14px;margin:4px 0 0;">Compartilo por WhatsApp o correo. Cuando termine, el PDF completo te llega a tu mail.</p>
+        <div class="linkbox"><input type="text" id="l-cliente" readonly><button class="btn sm" onclick="copyLink('l-cliente', this)">Copiar</button></div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <b style="font-size:16px;">Tu panel de seguimiento</b>
+        <p style="color:var(--ink-soft);font-size:14px;margin:4px 0 0;">Guardalo: desde acá ves si tu cliente terminó y descargás el PDF. No lo compartas.</p>
+        <div class="linkbox"><input type="text" id="l-panel" readonly><button class="btn sm" onclick="copyLink('l-panel', this)">Copiar</button></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:22px;flex-wrap:wrap;">
+        <a class="btn ghost" id="l-abrir-panel" href="#">Abrir mi panel</a>
+        <button class="btn ghost" onclick="location.reload()">Crear otro link</button>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<div class="modal hidden" id="pw-modal">
+  <div class="box">
+    <h2>Este PDF pide contraseña</h2>
+    <p id="pw-text">Ingresá la contraseña de apertura del documento. Se usa solo en tu navegador.</p>
+    <input type="password" id="pw-input" placeholder="Contraseña" autocomplete="off">
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn alt" id="pw-ok">Abrir</button>
+      <button class="btn ghost" id="pw-cancel">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="/vendor/pdf-lib.min.js"></script>
+<script src="/vendor/pdf.min.js"></script>
+<script src="/calco-core.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = "/vendor/pdf.worker.min.js";
+
+const $ = id => document.getElementById(id);
+function msg(box, text, kind){ $(box).innerHTML = text ? `<div class="msg ${kind}">${text}</div>` : ''; }
+function logLine(t, hit){
+  const d = document.createElement('div');
+  if (hit) d.className = 'hit';
+  d.textContent = t;
+  $('a-log').appendChild(d);
+  $('a-log').scrollTop = 1e6;
+}
+const flowViews = ['v-upload','v-analyze','v-create','v-links'];
+function showFlow(v){ flowViews.forEach(x => $(x).classList.toggle('hidden', x !== v)); window.scrollTo({top:0,behavior:'smooth'}); }
+
+function startFlow(){
+  $('v-landing').classList.add('hidden');
+  $('v-flow').classList.remove('hidden');
+  window.scrollTo({top:0});
+}
+
+function askPassword(wrong){
+  return new Promise(resolve => {
+    $('pw-modal').classList.remove('hidden');
+    $('pw-text').textContent = wrong
+      ? 'Esa contraseña no abrió el documento. Probá de nuevo.'
+      : 'Ingresá la contraseña de apertura del documento. Se usa solo en tu navegador.';
+    $('pw-input').value = ''; $('pw-input').focus();
+    const done = v => {
+      $('pw-modal').classList.add('hidden');
+      $('pw-ok').onclick = null; $('pw-cancel').onclick = null; $('pw-input').onkeydown = null;
+      resolve(v);
+    };
+    $('pw-ok').onclick = () => done($('pw-input').value);
+    $('pw-cancel').onclick = () => done(null);
+    $('pw-input').onkeydown = e => { if (e.key === 'Enter') done($('pw-input').value); };
+  });
+}
+
+let PDF_BYTES = null, SCHEMA = null;
+
+async function handleFile(file){
+  if (!file || file.type !== 'application/pdf'){ msg('up-msg','Subí un archivo PDF.','err'); return; }
+  msg('up-msg','','');
+  PDF_BYTES = new Uint8Array(await file.arrayBuffer());
+  showFlow('v-analyze');
+  $('a-log').innerHTML=''; $('a-bar').style.width='0';
+
+  try {
+    $('a-status').textContent = 'Abriendo el documento';
+    const state = await CalcoCore.open(PDF_BYTES, askPassword);
+    logLine(state.engine === 'js' ? 'Documento protegido: usando el motor para archivos encriptados' : 'Documento sin protección', true);
+
+    $('a-status').textContent = 'Buscando los campos';
+    $('a-bar').style.width = '30%';
+    const items = await CalcoCore.extract(state);
+    if (!items.length)
+      throw new Error('Este PDF no tiene campos completables. Es una imagen o un documento plano, así que no hay casillas que podamos mapear.');
+    logLine(`${items.length} campos encontrados en ${CalcoCore.pageCount(state)} páginas`, true);
+
+    $('a-status').textContent = 'Leyendo los rótulos impresos';
+    $('a-bar').style.width = '65%';
+    const texts = await CalcoCore.extractTexts(state);
+
+    SCHEMA = CalcoCore.makeSchema(items, texts);
+    if (!SCHEMA.total) throw new Error('No se pudo interpretar ningún campo de este formulario.');
+    $('a-bar').style.width = '100%';
+    logLine(`Listo: ${SCHEMA.total} preguntas en ${SCHEMA.steps.length} pasos`, true);
+
+    $('c-resumen').textContent = `Tu formulario quedó convertido en ${SCHEMA.total} preguntas en ${SCHEMA.steps.length} pasos. Decinos a dónde mandarte el resultado y generá el link.`;
+    setTimeout(()=>showFlow('v-create'), 500);
+  } catch(e){
+    msg('an-msg', (e.message||e) + ' <button class="btn ghost sm" style="margin-left:8px;" onclick="location.reload()">Volver</button>', 'err');
+  }
+}
+
+$('pick').addEventListener('click', ()=>$('file').click());
+$('file').addEventListener('change', e=>handleFile(e.target.files[0]));
+const drop = $('drop');
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop', e=>handleFile(e.dataTransfer.files[0]));
+
+$('c-crear').addEventListener('click', async () => {
+  const email = $('c-email').value.trim();
+  const cliente = $('c-cliente').value.trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ msg('c-msg','Poné un correo válido: ahí te llega el PDF completo.','err'); return; }
+  if (!cliente){ msg('c-msg','Poné el nombre de tu cliente.','err'); return; }
+  msg('c-msg','','');
+  const btn = $('c-crear'); btn.disabled = true; btn.textContent = 'Generando…';
+  try {
+    // base64 en bloques para no reventar la pila con archivos grandes
+    let bin = '';
+    for (let i = 0; i < PDF_BYTES.length; i += 0x8000)
+      bin += String.fromCharCode.apply(null, PDF_BYTES.subarray(i, i + 0x8000));
+    const res = await fetch('/api/sessions', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        agentEmail: email, agentName: $('c-agente').value.trim(),
+        clientName: cliente, schema: SCHEMA, pdf: btoa(bin)
+      })
+    });
+    if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || 'HTTP ' + res.status);
+    const data = await res.json();
+    $('l-cliente').value = data.clientUrl;
+    $('l-panel').value = data.panelUrl;
+    $('l-abrir-panel').href = data.panelUrl;
+    showFlow('v-links');
+  } catch(e){
+    msg('c-msg','No se pudo crear el link: ' + (e.message||e), 'err');
+  } finally { btn.disabled = false; btn.textContent = 'Generar el link'; }
+});
+
+function copyLink(id, btn){
+  const inp = $(id); inp.select();
+  navigator.clipboard.writeText(inp.value).then(()=>{
+    btn.textContent = 'Copiado ✓'; setTimeout(()=>btn.textContent='Copiar', 1600);
+  }).catch(()=>{ document.execCommand('copy'); btn.textContent='Copiado ✓'; setTimeout(()=>btn.textContent='Copiar', 1600); });
+}
+</script>
+</body>
+</html>

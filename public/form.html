@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Completá tu solicitud — Calco</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Archivo:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/calco.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="shell row">
+    <a class="brand" href="#" onclick="return false;"><span class="mark"></span>Calco</a>
+    <span class="sub" id="top-sub">Tu solicitud</span>
+  </div>
+</header>
+
+<main class="stage">
+  <div class="shell narrow">
+
+    <section id="v-cargando">
+      <h1 style="font-size:clamp(26px,4vw,36px);margin-bottom:16px;">Preparando tu formulario…</h1>
+      <div class="analyze">
+        <div style="font-weight:600;" id="load-status">Descargando la solicitud</div>
+        <div class="bar"><i id="load-bar" style="width:20%;"></i></div>
+      </div>
+      <div id="load-msg"></div>
+    </section>
+
+    <section id="v-intro" class="hidden">
+      <span class="tag">Solicitud de seguro</span>
+      <h1 style="margin:12px 0 14px;" id="i-titulo">Hola</h1>
+      <p style="color:var(--ink-soft);max-width:54ch;" id="i-texto"></p>
+      <div class="card" style="margin-top:8px;">
+        <b style="font-size:16px;">Antes de empezar</b>
+        <p style="color:var(--ink-soft);font-size:14.5px;margin:6px 0 0;">Son preguntas cortas, de a una pantalla por vez. Nada es obligatorio: si algo no aplica o no lo sabés, dejalo en blanco y tu agente lo completa con vos después. Tus respuestas no se guardan hasta que tocás <b>Enviar</b> al final.</p>
+      </div>
+      <button class="btn alt lg" id="btn-empezar" style="margin-top:22px;" onclick="empezar()">Empezar</button>
+    </section>
+
+    <section id="v-form" class="hidden">
+      <div class="progress" id="f-progress"></div>
+      <div class="steplbl" id="f-steplbl"></div>
+      <div class="card">
+        <h2 id="f-title"></h2>
+        <div class="lede" id="f-lede"></div>
+        <div id="f-body"></div>
+      </div>
+      <div id="f-msg"></div>
+    </section>
+
+    <section id="v-done" class="hidden">
+      <span class="tag">Listo</span>
+      <h1 style="margin:12px 0 14px;">¡Gracias! Tu solicitud ya fue enviada.</h1>
+      <p style="color:var(--ink-soft);max-width:52ch;" id="done-note">Tu agente la recibió y la va a revisar. Si falta algo, se pone en contacto con vos.</p>
+      <div id="done-msg"></div>
+    </section>
+
+  </div>
+</main>
+
+<div class="nav hidden" id="navbar">
+  <div class="shell narrow row">
+    <button class="btn ghost" id="n-back">Atrás</button>
+    <span class="sp"></span>
+    <button class="btn" id="n-next">Siguiente</button>
+    <button class="btn alt hidden" id="n-gen">Enviar a mi agente</button>
+  </div>
+</div>
+
+<script src="/vendor/pdf-lib.min.js"></script>
+<script src="/vendor/pdf.min.js"></script>
+<script src="/calco-core.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = "/vendor/pdf.worker.min.js";
+
+const $ = id => document.getElementById(id);
+function msg(box, text, kind){ $(box).innerHTML = text ? `<div class="msg ${kind}">${text}</div>` : ''; }
+const views = ['v-cargando','v-intro','v-form','v-done'];
+function show(v){ views.forEach(x => $(x).classList.toggle('hidden', x !== v)); window.scrollTo({top:0,behavior:'smooth'}); }
+
+const SID = location.pathname.split('/')[2];
+let STATE = null, SCHEMA = null, META = null, STEP = 0;
+const ANSWERS = {}, SIGS = {};
+
+async function init(){
+  try {
+    $('load-status').textContent = 'Descargando la solicitud';
+    const [metaRes, pdfRes] = await Promise.all([
+      fetch(`/api/sessions/${SID}/meta`),
+      fetch(`/api/sessions/${SID}/pdf`)
+    ]);
+    if (!metaRes.ok || !pdfRes.ok) throw new Error('Este link no existe o venció. Pedile a tu agente que te mande uno nuevo.');
+    META = await metaRes.json();
+    SCHEMA = META.schema;
+    const bytes = new Uint8Array(await pdfRes.arrayBuffer());
+    $('load-bar').style.width = '60%';
+    $('load-status').textContent = 'Preparando las preguntas';
+    STATE = await CalcoCore.open(bytes, null);
+    await CalcoCore.extract(STATE); // reconstruye los widgets para la escritura
+    $('load-bar').style.width = '100%';
+
+    $('i-titulo').textContent = `Hola, ${META.clientName}`;
+    $('i-texto').textContent = (META.agentName ? `${META.agentName} te mandó` : 'Tu agente de seguros te mandó')
+      + ` esta solicitud para completar. Al terminar, le llega directo para revisarla — vos no tenés que imprimir ni enviar nada.`;
+    $('top-sub').textContent = META.clientName;
+    show('v-intro');
+  } catch(e){
+    msg('load-msg', e.message||e, 'err');
+    $('load-bar').style.width = '0';
+  }
+}
+
+function empezar(){
+  STEP = 0; show('v-form'); $('navbar').classList.remove('hidden'); renderStep();
+}
+
+function qKey(q,i){ return CalcoCore.qKey(q,i); }
+
+function renderStep(){
+  const step = SCHEMA.steps[STEP];
+  $('f-progress').innerHTML = SCHEMA.steps.map((s,i)=>`<i class="${i<STEP?'done':i===STEP?'now':''}"></i>`).join('');
+  $('f-steplbl').textContent = `Paso ${STEP+1} de ${SCHEMA.steps.length}`;
+  $('f-title').textContent = step.title;
+  $('f-lede').textContent = step.signatures
+    ? 'Dibujá tu firma con el dedo o el mouse. Si preferís firmar en papel, saltealo: tu agente lo resuelve con vos.'
+    : 'Completá lo que aplique a tu caso. Nada es obligatorio.';
+
+  let html = '';
+  (step.questions||[]).forEach((q,idx) => {
+    const key = qKey(q, STEP*100+idx);
+    const hint = q.hint ? `<div class="hint">${q.hint}</div>` : '';
+    if (q.type==='choice' && q.options && q.options.length){
+      html += `<div class="q"><label>${q.label}</label><div class="choices">` +
+        q.options.map((o,i)=>`<label class="choice"><input type="radio" name="${key}" value="${i}"> ${o}</label>`).join('') +
+        `</div>${hint}</div>`;
+    } else if (q.type==='date'){
+      html += `<div class="q"><label>${q.label}</label><input type="date" name="${key}">${hint}</div>`;
+    } else if (q.type==='longtext'){
+      html += `<div class="q"><label>${q.label}</label><textarea name="${key}" rows="3"></textarea>${hint}</div>`;
+    } else {
+      html += `<div class="q"><label>${q.label}</label><input type="text" name="${key}">${hint}</div>`;
+    }
+  });
+  (step.signatures||[]).forEach((s,i) => {
+    html += `<div class="q sigwrap"><label>Firma ${i+1}</label>
+      <canvas id="sig${i}" width="600" height="150" data-fid="${s.id}"></canvas>
+      <button class="btn ghost sm" style="margin-top:8px;" onclick="clearSig(${i})">Borrar</button></div>`;
+  });
+  $('f-body').innerHTML = html;
+
+  $('f-body').querySelectorAll('input,textarea,select').forEach(inp => {
+    const v = ANSWERS[inp.name]; if (v===undefined) return;
+    if (inp.type==='radio') inp.checked = (inp.value===v); else inp.value = v;
+  });
+  (step.signatures||[]).forEach((s,i)=>setupPad('sig'+i));
+
+  $('n-back').style.visibility = STEP===0 ? 'hidden' : 'visible';
+  const last = STEP === SCHEMA.steps.length-1;
+  $('n-next').classList.toggle('hidden', last);
+  $('n-gen').classList.toggle('hidden', !last);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function saveStep(){
+  $('f-body').querySelectorAll('input,textarea,select').forEach(inp=>{
+    if (!inp.name) return;
+    if (inp.type==='radio'){ if (inp.checked) ANSWERS[inp.name]=inp.value; }
+    else ANSWERS[inp.name]=inp.value;
+  });
+}
+
+function setupPad(id){
+  const c=$(id); if(!c||c.dataset.ready) return; c.dataset.ready='1';
+  const ctx=c.getContext('2d'); ctx.lineWidth=2; ctx.lineCap='round'; ctx.strokeStyle='#16233A';
+  let on=false,last=null;
+  const pos=e=>{const r=c.getBoundingClientRect(),t=e.touches?e.touches[0]:e;
+    return {x:(t.clientX-r.left)*(c.width/r.width),y:(t.clientY-r.top)*(c.height/r.height)};};
+  const st=e=>{on=true;last=pos(e);e.preventDefault();};
+  const mv=e=>{if(!on)return;const p=pos(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;
+    SIGS[c.dataset.fid]=c.toDataURL('image/png');e.preventDefault();};
+  c.addEventListener('mousedown',st); c.addEventListener('mousemove',mv);
+  window.addEventListener('mouseup',()=>on=false);
+  c.addEventListener('touchstart',st,{passive:false}); c.addEventListener('touchmove',mv,{passive:false});
+  c.addEventListener('touchend',()=>on=false);
+}
+function clearSig(i){ const c=$('sig'+i); c.getContext('2d').clearRect(0,0,c.width,c.height); delete SIGS[c.dataset.fid]; }
+
+async function enviar(){
+  saveStep();
+  const btn = $('n-gen'); btn.disabled = true; btn.textContent = 'Enviando…';
+  try {
+    const { bytes, sigWarning } = await CalcoCore.fill(STATE, SCHEMA, ANSWERS, SIGS);
+    const res = await fetch(`/api/sessions/${SID}/complete`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/pdf'},
+      body: bytes
+    });
+    if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || 'HTTP ' + res.status);
+    const data = await res.json();
+    $('navbar').classList.add('hidden');
+    if (data.emailed === false)
+      $('done-note').textContent = 'Tu solicitud quedó guardada y tu agente puede verla desde su panel. Si falta algo, se pone en contacto con vos.';
+    msg('done-msg', sigWarning
+      ? 'La firma dibujada no se pudo estampar en este archivo protegido; el resto de tus respuestas llegó completo. Tu agente lo resuelve con vos.'
+      : '', 'warn');
+    show('v-done');
+  } catch(e){
+    msg('f-msg','No se pudo enviar: ' + (e.message||e) + '. Probá de nuevo en un momento.', 'err');
+  } finally { btn.disabled = false; btn.textContent = 'Enviar a mi agente'; }
+}
+
+$('n-next').addEventListener('click', ()=>{ saveStep(); if(STEP<SCHEMA.steps.length-1){STEP++;renderStep();} });
+$('n-back').addEventListener('click', ()=>{ saveStep(); if(STEP>0){STEP--;renderStep();} });
+$('n-gen').addEventListener('click', enviar);
+
+init();
+</script>
+</body>
+</html>

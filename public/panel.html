@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel — Calco</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Archivo:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/calco.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="shell row">
+    <a class="brand" href="/"><span class="mark"></span>Calco</a>
+    <span class="sub">Panel del agente</span>
+  </div>
+</header>
+
+<main class="stage">
+  <div class="shell narrow">
+    <section id="v-panel">
+      <span class="tag">Seguimiento</span>
+      <h1 style="margin:12px 0 6px;font-size:clamp(26px,4vw,38px);" id="p-titulo">Cargando…</h1>
+      <p style="color:var(--ink-soft);" id="p-sub"></p>
+      <div id="p-estado"></div>
+      <div class="card hidden" id="p-descarga" style="margin-top:20px;">
+        <b style="font-size:16px;">PDF completo</b>
+        <p style="color:var(--ink-soft);font-size:14px;margin:4px 0 12px;" id="p-fecha"></p>
+        <a class="btn alt" id="p-dl" href="#">Descargar el PDF</a>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <b style="font-size:16px;">Link de tu cliente</b>
+        <p style="color:var(--ink-soft);font-size:14px;margin:4px 0 0;">Por si lo tenés que reenviar.</p>
+        <div class="linkbox"><input type="text" id="p-link" readonly><button class="btn sm" id="p-copy">Copiar</button></div>
+      </div>
+      <div id="p-msg"></div>
+      <p class="note" style="margin-top:24px;">Esta página se actualiza sola cada 30 segundos.</p>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const parts = location.pathname.split('/');
+const SID = parts[2], KEY = parts[3];
+
+async function refresh(){
+  try {
+    const res = await fetch(`/api/sessions/${SID}/status?key=${encodeURIComponent(KEY)}`);
+    if (!res.ok) throw new Error('Este panel no existe o el link está incompleto.');
+    const s = await res.json();
+    $('p-titulo').textContent = `Solicitud de ${s.clientName}`;
+    $('p-sub').textContent = `El PDF completo se envía a ${s.agentEmail}.`;
+    $('p-link').value = location.origin + '/f/' + SID;
+    if (s.completed){
+      $('p-estado').innerHTML = '<div class="msg ok">Tu cliente completó el formulario.' +
+        (s.emailed ? ' Te lo enviamos por correo.' : ' El envío por correo no está configurado en este servidor: descargalo desde acá.') + '</div>';
+      $('p-descarga').classList.remove('hidden');
+      $('p-fecha').textContent = 'Recibido: ' + new Date(s.completedAt).toLocaleString();
+      $('p-dl').href = `/api/sessions/${SID}/completed?key=${encodeURIComponent(KEY)}`;
+    } else {
+      $('p-estado').innerHTML = '<div class="msg warn">Todavía sin respuesta. Cuando tu cliente termine, el PDF llega a tu correo y aparece acá.</div>';
+    }
+  } catch(e){
+    $('p-titulo').textContent = 'Panel no disponible';
+    $('p-estado').innerHTML = `<div class="msg err">${e.message||e}</div>`;
+  }
+}
+$('p-copy').addEventListener('click', ()=>{
+  const inp = $('p-link'); inp.select();
+  navigator.clipboard.writeText(inp.value).then(()=>{
+    $('p-copy').textContent='Copiado ✓'; setTimeout(()=>$('p-copy').textContent='Copiar',1600);
+  });
+});
+refresh();
+setInterval(refresh, 30000);
+</script>
+</body>
+</html>
