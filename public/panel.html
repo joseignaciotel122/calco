@@ -56,7 +56,9 @@ async function refresh(){
     $('p-link').value = location.origin + '/f/' + SID;
     if (s.completed){
       $('p-estado').innerHTML = '<div class="msg ok">Tu cliente completó el formulario.' +
-        (s.emailed ? ' Te lo enviamos por correo.' : ' El envío por correo no está configurado en este servidor: descargalo desde acá.') + '</div>';
+        (s.emailed === true ? ' Te lo enviamos por correo.'
+         : s.emailed === false ? ' El correo no pudo salir (revisá la configuración del servidor): descargalo desde acá.'
+         : ' Te lo estamos enviando por correo.') + '</div>';
       $('p-descarga').classList.remove('hidden');
       $('p-fecha').textContent = 'Recibido: ' + new Date(s.completedAt).toLocaleString();
       $('p-dl').href = `/api/sessions/${SID}/completed?key=${encodeURIComponent(KEY)}`;
