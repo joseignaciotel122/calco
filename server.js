@@ -19,22 +19,24 @@ fs.mkdirSync(OUTBOX, { recursive: true });
 
 const MAX_PDF = 25 * 1024 * 1024;
 
-/* ---------- correo ---------- */
+/* ---------- correo ----------
+   Prioridad: Brevo por API HTTPS (funciona en cualquier host, incluso donde
+   el SMTP saliente está bloqueado, como el plan free de Render). Si no hay
+   BREVO_API_KEY, se intenta Gmail SMTP; sin nada, se simula en data/outbox. */
+const brevoReady = !!process.env.BREVO_API_KEY;
 const smtpReady = !!(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
+const FROM_EMAIL = process.env.FROM_EMAIL || process.env.GMAIL_USER || 'no-reply@calco.local';
+
 const transporter = smtpReady
   ? nodemailer.createTransport({
       host: 'smtp.gmail.com', port: 465, secure: true,
-      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD }
+      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
+      connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 30000
     })
   : nodemailer.createTransport({ streamTransport: true, newline: 'unix', buffer: true });
 
-async function sendCompletedEmail(meta, pdfPath){
-  const mail = {
-    from: smtpReady ? `"Calco" <${process.env.GMAIL_USER}>` : '"Calco (simulado)" <no-reply@calco.local>',
-    to: meta.agentEmail,
-    subject: `Formulario completo: ${meta.clientName}`,
-    text:
-`Hola${meta.agentName ? ' ' + meta.agentName : ''}:
+function mailBody(meta){
+  return `Hola${meta.agentName ? ' ' + meta.agentName : ''}:
 
 ${meta.clientName} terminó de completar la solicitud. Va adjunta en este correo, con las respuestas estampadas en el PDF original de la aseguradora.
 
@@ -42,13 +44,37 @@ Revisala, completá lo que falte y presentala.
 
 Tu panel de seguimiento: ${BASE_URL}/s/${meta.id}/${meta.adminKey}
 
-— Calco`,
-    attachments: [{
-      filename: `solicitud-${meta.clientName.replace(/[^\wáéíóúñÁÉÍÓÚÑ -]/g,'').replace(/\s+/g,'-')}.pdf`,
-      path: pdfPath, contentType: 'application/pdf'
-    }]
-  };
-  const info = await transporter.sendMail(mail);
+— Calco`;
+}
+function attachName(meta){
+  return `solicitud-${meta.clientName.replace(/[^\wáéíóúñÁÉÍÓÚÑ -]/g,'').replace(/\s+/g,'-')}.pdf`;
+}
+
+async function sendWithBrevo(meta, pdfPath){
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sender: { name: 'Calco', email: FROM_EMAIL },
+      to: [{ email: meta.agentEmail }],
+      subject: `Formulario completo: ${meta.clientName}`,
+      textContent: mailBody(meta),
+      attachment: [{ name: attachName(meta), content: fs.readFileSync(pdfPath).toString('base64') }]
+    })
+  });
+  if (!res.ok) throw new Error(`Brevo HTTP ${res.status}: ${(await res.text()).slice(0,200)}`);
+  return { emailed: true };
+}
+
+async function sendCompletedEmail(meta, pdfPath){
+  if (brevoReady) return sendWithBrevo(meta, pdfPath);
+  const info = await transporter.sendMail({
+    from: smtpReady ? `"Calco" <${process.env.GMAIL_USER}>` : '"Calco (simulado)" <no-reply@calco.local>',
+    to: meta.agentEmail,
+    subject: `Formulario completo: ${meta.clientName}`,
+    text: mailBody(meta),
+    attachments: [{ filename: attachName(meta), path: pdfPath, contentType: 'application/pdf' }]
+  });
   if (!smtpReady){
     fs.writeFileSync(path.join(OUTBOX, `${meta.id}.eml`), info.message);
     return { emailed: false };
@@ -145,18 +171,15 @@ app.post('/api/sessions/:id/complete', async (req, res) => {
   fs.writeFileSync(pdfPath, bytes);
   meta.completed = true;
   meta.completedAt = new Date().toISOString();
-
-  let emailed = false;
-  try {
-    const r = await sendCompletedEmail(meta, pdfPath);
-    emailed = r.emailed;
-  } catch(e){
-    console.error('email error:', e.message);
-    emailed = false;
-  }
-  meta.emailed = emailed;
+  meta.emailed = null;
   writeMeta(meta);
-  res.json({ ok: true, emailed });
+
+  // Respondemos ya: el cliente no tiene por qué esperar al servidor de correo.
+  res.json({ ok: true, emailed: null });
+
+  sendCompletedEmail(meta, pdfPath)
+    .then(r => { meta.emailed = r.emailed; writeMeta(meta); console.log(`email enviado a ${meta.agentEmail} (${meta.id})`); })
+    .catch(e => { meta.emailed = false; writeMeta(meta); console.error('email error:', e.message); });
 });
 
 // Panel del agente (protegido por adminKey)
@@ -186,7 +209,9 @@ app.get('/s/:id/:key', (req, res) => res.sendFile(path.join(__dirname, 'public',
 
 app.listen(PORT, () => {
   console.log(`Calco escuchando en ${BASE_URL}`);
-  console.log(smtpReady
-    ? `Correo: Gmail SMTP como ${process.env.GMAIL_USER}`
-    : 'Correo: SIMULADO (configurá GMAIL_USER y GMAIL_APP_PASSWORD en .env para envío real; los .eml quedan en data/outbox/)');
+  console.log(brevoReady
+    ? `Correo: Brevo API como ${FROM_EMAIL}`
+    : smtpReady
+      ? `Correo: Gmail SMTP como ${process.env.GMAIL_USER} (ojo: algunos hosts bloquean SMTP saliente)`
+      : 'Correo: SIMULADO (configurá BREVO_API_KEY, o GMAIL_USER + GMAIL_APP_PASSWORD; los .eml quedan en data/outbox/)');
 });
