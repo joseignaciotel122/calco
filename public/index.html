@@ -141,6 +141,29 @@
       <div id="an-msg"></div>
     </section>
 
+    <section id="v-review" class="hidden">
+      <span class="tag">Paso 2 · Revisión</span>
+      <h1 style="margin:12px 0 14px;font-size:clamp(28px,4vw,40px);">Elegí qué ve tu cliente</h1>
+      <p style="color:var(--ink-soft);max-width:58ch;">Destildá lo que no tenga que completar tu cliente y corregí el texto de cualquier pregunta que haya quedado confusa. Lo destildado queda en blanco en el PDF, para completarlo vos.</p>
+      <div id="r-auto"></div>
+      <div class="card" style="margin-top:18px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+          <b style="font-size:16px;">Preguntas</b>
+          <span style="color:var(--ink-soft);font-size:13.5px;" id="r-count"></span>
+          <span style="flex:1;"></span>
+          <button class="btn ghost sm" id="r-all">Tildar todo</button>
+          <button class="btn ghost sm" id="r-none">Destildar todo</button>
+        </div>
+        <div id="r-list" style="max-height:55vh;overflow:auto;border-top:1px solid var(--rule-soft);"></div>
+      </div>
+      <div class="card hidden" style="margin-top:16px;" id="r-sigcard">
+        <b style="font-size:16px;">Firmas que dibuja el cliente</b>
+        <div id="r-sigs" style="margin-top:10px;"></div>
+      </div>
+      <button class="btn alt lg" id="r-continue" style="margin-top:22px;">Continuar</button>
+      <div id="r-msg"></div>
+    </section>
+
     <section id="v-create" class="hidden">
       <span class="tag">Paso 2 · El link</span>
       <h1 style="margin:12px 0 14px;font-size:clamp(28px,4vw,40px);">Listo para tu cliente</h1>
@@ -215,7 +238,7 @@ function logLine(t, hit){
   $('a-log').appendChild(d);
   $('a-log').scrollTop = 1e6;
 }
-const flowViews = ['v-upload','v-analyze','v-create','v-links'];
+const flowViews = ['v-upload','v-analyze','v-review','v-create','v-links'];
 function showFlow(v){ flowViews.forEach(x => $(x).classList.toggle('hidden', x !== v)); window.scrollTo({top:0,behavior:'smooth'}); }
 
 function startFlow(){
@@ -242,7 +265,7 @@ function askPassword(wrong){
   });
 }
 
-let PDF_BYTES = null, SCHEMA = null;
+let PDF_BYTES = null, SCHEMA = null, ANALYSIS = null;
 
 async function handleFile(file){
   if (!file || file.type !== 'application/pdf'){ msg('up-msg','Subí un archivo PDF.','err'); return; }
@@ -267,13 +290,13 @@ async function handleFile(file){
     $('a-bar').style.width = '65%';
     const texts = await CalcoCore.extractTexts(state);
 
-    SCHEMA = CalcoCore.makeSchema(items, texts);
-    if (!SCHEMA.total) throw new Error('No se pudo interpretar ningún campo de este formulario.');
+    ANALYSIS = CalcoCore.analyze(items, texts);
+    if (!ANALYSIS.questions.length) throw new Error('No se pudo interpretar ningún campo de este formulario.');
     $('a-bar').style.width = '100%';
-    logLine(`Listo: ${SCHEMA.total} preguntas en ${SCHEMA.steps.length} pasos`, true);
+    logLine(`Listo: ${ANALYSIS.questions.length} preguntas`, true);
 
-    $('c-resumen').textContent = `Tu formulario quedó convertido en ${SCHEMA.total} preguntas en ${SCHEMA.steps.length} pasos. Decinos a dónde mandarte el resultado y generá el link.`;
-    setTimeout(()=>showFlow('v-create'), 500);
+    renderReview();
+    setTimeout(()=>showFlow('v-review'), 500);
   } catch(e){
     msg('an-msg', (e.message||e) + ' <button class="btn ghost sm" style="margin-left:8px;" onclick="location.reload()">Volver</button>', 'err');
   }
@@ -285,6 +308,72 @@ const drop = $('drop');
 ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
 ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
 drop.addEventListener('drop', e=>handleFile(e.dataTransfer.files[0]));
+
+/* ===== Revisión del agente ===== */
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+function renderReview(){
+  const qs = ANALYSIS.questions, sigs = ANALYSIS.sigs;
+  const autoOff = qs.filter(q=>q.internal).length + sigs.filter(s=>s.internal).length;
+  msg('r-auto', autoOff
+    ? `Detectamos <b>${autoOff}</b> campo(s) que parecen de uso interno o del agente (por ejemplo, debajo de un encabezado tipo “para ser completado por el agente”). Los dejamos destildados: revisalos igual.`
+    : '', 'warn');
+
+  $('r-list').innerHTML = qs.map((q,i) => `
+    <div class="rrow${q.internal?' internal':''}">
+      <input type="checkbox" data-q="${i}" ${q.internal?'':'checked'}>
+      <div class="rmain">
+        <input type="text" class="rlab" data-lab="${i}" value="${esc(q.label)}">
+        <div class="rmeta">Pág. ${(q.page??0)+1} · ${q.type==='choice' ? 'opciones: '+esc((q.options||[]).join(' / ')).slice(0,80)
+          : q.type==='date' ? 'fecha' : q.type==='longtext' ? 'texto largo'
+          : q.fields.length>1 ? q.fields.length+' casillas' : 'texto'}${q.internal?' · <b>parece del agente</b>':''}</div>
+      </div>
+    </div>`).join('');
+
+  $('r-sigcard').classList.toggle('hidden', !sigs.length);
+  $('r-sigs').innerHTML = sigs.map((s,i) => `
+    <div class="rrow${s.internal?' internal':''}">
+      <input type="checkbox" data-s="${i}" ${s.internal?'':'checked'}>
+      <div class="rmain">
+        <div style="font-size:14.5px;font-weight:600;">${esc(s.id)}</div>
+        <div class="rmeta">Pág. ${(s.page??0)+1}${s.internal?' · <b>parece del agente</b>':''}</div>
+      </div>
+    </div>`).join('');
+
+  updateReviewCount();
+  $('r-list').addEventListener('change', updateReviewCount);
+  $('r-sigs').addEventListener('change', updateReviewCount);
+}
+
+function updateReviewCount(){
+  const on = document.querySelectorAll('#r-list input[type=checkbox]:checked').length;
+  const total = ANALYSIS.questions.length;
+  $('r-count').textContent = `${on} de ${total} van al cliente`;
+}
+
+$('r-all').addEventListener('click', ()=>{ document.querySelectorAll('#r-list input[type=checkbox]').forEach(c=>c.checked=true); updateReviewCount(); });
+$('r-none').addEventListener('click', ()=>{ document.querySelectorAll('#r-list input[type=checkbox]').forEach(c=>c.checked=false); updateReviewCount(); });
+
+$('r-continue').addEventListener('click', () => {
+  const chosen = [];
+  document.querySelectorAll('#r-list input[type=checkbox]').forEach(c => {
+    if (!c.checked) return;
+    const i = Number(c.dataset.q), q = ANALYSIS.questions[i];
+    const lab = document.querySelector(`input[data-lab="${i}"]`);
+    chosen.push({ label: (lab && lab.value.trim()) || q.label, type: q.type,
+                  fields: q.fields, options: q.options, hint: q.hint, dayFirst: q.dayFirst });
+  });
+  const sigs = [];
+  document.querySelectorAll('#r-sigs input[type=checkbox]').forEach(c => {
+    if (c.checked) sigs.push({ id: ANALYSIS.sigs[Number(c.dataset.s)].id });
+  });
+  if (!chosen.length && !sigs.length){ msg('r-msg','Tildá al menos una pregunta para tu cliente.','err'); return; }
+  msg('r-msg','','');
+  SCHEMA = CalcoCore.makeSchema(chosen, sigs);
+  $('c-resumen').textContent = `Tu cliente va a ver ${SCHEMA.total} preguntas en ${SCHEMA.steps.length} pasos. Decinos a dónde mandarte el resultado y generá el link.`;
+  showFlow('v-create');
+});
 
 $('c-crear').addEventListener('click', async () => {
   const email = $('c-email').value.trim();

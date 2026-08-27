@@ -131,6 +131,17 @@ CalcoCore.extractTexts = async function(state){
 
 /* ================= INTERPRETACIÓN (heurística local) ================= */
 
+// Marcas de "esto no lo llena el cliente": encabezados tipo
+// "PARA SER COMPLETADO POR EL AGENTE", "USO EXCLUSIVO/INTERNO", "OFFICE USE ONLY".
+const INTERNAL_RE = /para\s+ser\s+(llenado|completado)\s+por|uso\s+(exclusivo|interno)|for\s+(office|internal|company)\s+use|office\s+use\s+only|s[oó]lo\s+para\s+uso|uso\s+de\s+la\s+(compa[ñn][ií]a|aseguradora|oficina)|no\s+(llenar|completar|escribir)\b/i;
+const INTERNAL_LABEL_RE = /\bdel\s+agente\b|\bdel\s+corredor\b|\bbroker\b|c[oó]digo\s+del?\s+agente|firma\s+del\s+agente/i;
+
+CalcoCore.internalMarkers = function(texts){
+  return texts.map(page =>
+    (page||[]).filter(t => INTERNAL_RE.test(t.s)).map(t => t.y)
+  );
+};
+
 CalcoCore.buildQuestions = function(items, texts){
   items.sort((a,b) => a.page-b.page || b.y-a.y || a.x-b.x);
   const fillable = items.filter(i => i.type !== 'signature');
@@ -252,6 +263,7 @@ CalcoCore.buildQuestions = function(items, texts){
 
   const clean = s => s ? s.replace(/^\s*\d+\s*[.)-]?\s*/,'').replace(/[:：]\s*$/,'').trim() : s;
 
+  const markers = CalcoCore.internalMarkers(texts);
   const out = [];
   for (const {f, comb} of qs){
     const flds = comb || [f];
@@ -284,19 +296,37 @@ CalcoCore.buildQuestions = function(items, texts){
       const lt = f.h>34 || /expli|detall|describ|coment/i.test(label||'');
       out.push({ label: label || clean(String(f.id)), type: lt?'longtext':'text', fields:[f.id] });
     }
+    // ¿Este dato está debajo de un encabezado de uso interno, o su rótulo delata que es del agente?
+    const q = out[out.length-1];
+    if (q){
+      q.page = f.page;
+      q.internal = (markers[f.page]||[]).some(my => my > bbox.y1 - 2)
+                   || INTERNAL_LABEL_RE.test(q.label||'');
+    }
   }
   return out;
 };
 
-CalcoCore.makeSchema = function(items, texts){
-  const sigs = items.filter(i => i.type === 'signature')
-    .map(s => ({ id: s.id }));
+// Análisis completo para el paso de revisión del agente:
+// preguntas + firmas, cada una con su marca "internal" (no la llena el cliente).
+CalcoCore.analyze = function(items, texts){
+  const markers = CalcoCore.internalMarkers(texts);
   const questions = CalcoCore.buildQuestions(items, texts);
+  const sigs = items.filter(i => i.type === 'signature').map(s => ({
+    id: s.id, page: s.page,
+    internal: (markers[s.page]||[]).some(my => my > s.y + s.h - 2)
+              || INTERNAL_LABEL_RE.test(String(s.id))
+  }));
+  return { questions, sigs };
+};
+
+// Arma el esquema final con las preguntas y firmas que el agente aprobó.
+CalcoCore.makeSchema = function(questions, sigs){
   const PER = 8, steps = [];
   for (let i=0;i<questions.length;i+=PER)
     steps.push({ title:`Sección ${steps.length+1}`, questions: questions.slice(i,i+PER) });
-  if (sigs.length) steps.push({ title:'Firma', questions:[], signatures:sigs });
-  return { steps, total: questions.length, engine: null };
+  if (sigs && sigs.length) steps.push({ title:'Firma', questions:[], signatures:sigs });
+  return { steps, total: questions.length };
 };
 
 /* ================= ESCRITURA ================= */
