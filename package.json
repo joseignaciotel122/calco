@@ -1,0 +1,13 @@
+{
+  "name": "calco-agentes",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Calco para agentes de seguro: PDF → formulario web → link al cliente → PDF completo por mail",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "nodemailer": "^6.9.13",
+    "dotenv": "^16.4.5"
+  }
+}

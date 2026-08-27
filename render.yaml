@@ -1,0 +1,20 @@
+# Deploy en Render con un click: https://dashboard.render.com/blueprints
+# (o creá el Web Service a mano; ver README)
+services:
+  - type: web
+    name: calco
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+    # Para que las sesiones sobrevivan reinicios hace falta un disco persistente
+    # (plan pago de Render). En el plan free, data/ se borra en cada reinicio:
+    # disk:
+    #   name: calco-data
+    #   mountPath: /opt/render/project/src/data
+    #   sizeGB: 1
