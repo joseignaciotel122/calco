@@ -44,13 +44,15 @@ async function extractWithPdfLib(state){
   });
   const items = [];
   for (const f of form.getFields()){
-    const kind = f.constructor.name;
-    let type = 'text';
-    if (kind === 'PDFRadioGroup') type = 'radio';
-    else if (kind === 'PDFCheckBox') type = 'checkbox';
-    else if (kind === 'PDFDropdown' || kind === 'PDFOptionList') type = 'select';
-    else if (kind === 'PDFSignature') type = 'signature';
-    else if (kind !== 'PDFTextField') continue;
+    // instanceof y no constructor.name: la versión minificada de pdf-lib
+    // cambia los nombres de las clases y con .name se descartaba todo.
+    let type;
+    if (f instanceof PDFLib.PDFRadioGroup) type = 'radio';
+    else if (f instanceof PDFLib.PDFCheckBox) type = 'checkbox';
+    else if (f instanceof PDFLib.PDFDropdown || f instanceof PDFLib.PDFOptionList) type = 'select';
+    else if (f instanceof PDFLib.PDFSignature) type = 'signature';
+    else if (f instanceof PDFLib.PDFTextField) type = 'text';
+    else continue;
     const ws = f.acroField.getWidgets(); if (!ws.length) continue;
     const r0 = ws[0].getRectangle();
     let options = null;
