@@ -433,17 +433,26 @@ async function generateWithPdfjs(state, schema, answers, sigs, flags){
     }
   });
 
+  // Las firmas viajan como anotaciones "stamp". OJO: pdf.js solo serializa
+  // anotaciones nuevas si la clave empieza con su prefijo interno de editor.
   const stampIds = [];
   for (const name in sigs){
     const w = (WIDGETS[name]||[])[0]; if (!w) continue;
     try {
       const blob = await (await fetch(sigs[name])).blob();
       const bitmap = await createImageBitmap(blob);
-      const id = 'calcoSig' + stampIds.length;
+      const id = 'pdfjs_internal_editor_' + (9000 + stampIds.length);
       const r = w.rect;
+      const x0 = Math.min(r[0],r[2]), y0 = Math.min(r[1],r[3]);
+      const x1 = Math.max(r[0],r[2]), y1 = Math.max(r[1],r[3]);
+      // mantener la proporción de la firma dentro del casillero
+      const bw = x1-x0, bh = y1-y0;
+      const k = Math.min(bw/bitmap.width, bh/bitmap.height);
+      const sw = bitmap.width*k, sh = bitmap.height*k;
+      const cx = (x0+x1)/2, cy = (y0+y1)/2;
       store.setValue(id, {
-        annotationType: 13, bitmap, bitmapId: id, pageIndex: w.page,
-        rect: [Math.min(r[0],r[2]), Math.min(r[1],r[3]), Math.max(r[0],r[2]), Math.max(r[1],r[3])],
+        annotationType: 13, bitmap, bitmapId: 'calco_sig_' + stampIds.length, pageIndex: w.page,
+        rect: [cx-sw/2, cy-sh/2, cx+sw/2, cy+sh/2],
         rotation: 0, isSvg: false, structTreeParentId: null
       });
       stampIds.push(id);
