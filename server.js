@@ -40,11 +40,11 @@ function mailBody(meta){
 
 ${meta.clientName} terminó de completar la solicitud. Va adjunta en este correo, con las respuestas estampadas en el PDF original de la aseguradora.
 
-Revisala, completá lo que falte y presentala.
+Revísala, completa lo que falte y preséntala.
 
 Tu panel de seguimiento: ${BASE_URL}/s/${meta.id}/${meta.adminKey}
 
-— Calco`;
+— CalcoIA`;
 }
 function attachName(meta){
   return `solicitud-${meta.clientName.replace(/[^\wáéíóúñÁÉÍÓÚÑ -]/g,'').replace(/\s+/g,'-')}.pdf`;
@@ -55,7 +55,7 @@ async function sendWithBrevo(meta, pdfPath){
     method: 'POST',
     headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      sender: { name: 'Calco', email: FROM_EMAIL },
+      sender: { name: 'CalcoIA', email: FROM_EMAIL },
       to: [{ email: meta.agentEmail }],
       subject: `Formulario completo: ${meta.clientName}`,
       textContent: mailBody(meta),
@@ -69,7 +69,7 @@ async function sendWithBrevo(meta, pdfPath){
 async function sendCompletedEmail(meta, pdfPath){
   if (brevoReady) return sendWithBrevo(meta, pdfPath);
   const info = await transporter.sendMail({
-    from: smtpReady ? `"Calco" <${process.env.GMAIL_USER}>` : '"Calco (simulado)" <no-reply@calco.local>',
+    from: smtpReady ? `"CalcoIA" <${process.env.GMAIL_USER}>` : '"CalcoIA (simulado)" <no-reply@calco.local>',
     to: meta.agentEmail,
     subject: `Formulario completo: ${meta.clientName}`,
     text: mailBody(meta),
