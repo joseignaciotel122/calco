@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Completá tu solicitud — Calco</title>
+<title>Completa tu solicitud — CalcoIA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Archivo:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -13,7 +13,7 @@
 
 <header class="top">
   <div class="shell row">
-    <a class="brand" href="#" onclick="return false;"><span class="mark"></span>Calco</a>
+    <a class="brand" href="#" onclick="return false;"><span class="mark"></span>CalcoIA</a>
     <span class="sub" id="top-sub">Tu solicitud</span>
   </div>
 </header>
@@ -36,7 +36,7 @@
       <p style="color:var(--ink-soft);max-width:54ch;" id="i-texto"></p>
       <div class="card" style="margin-top:8px;">
         <b style="font-size:16px;">Antes de empezar</b>
-        <p style="color:var(--ink-soft);font-size:14.5px;margin:6px 0 0;">Son preguntas cortas, de a una pantalla por vez. Nada es obligatorio: si algo no aplica o no lo sabés, dejalo en blanco y tu agente lo completa con vos después. Tus respuestas no se guardan hasta que tocás <b>Enviar</b> al final.</p>
+        <p style="color:var(--ink-soft);font-size:14.5px;margin:6px 0 0;">Son preguntas cortas, de a una pantalla por vez. Nada es obligatorio: si algo no aplica o no lo sabes, déjalo en blanco y tu agente lo completa contigo después. Tus respuestas no se guardan hasta que tocas <b>Enviar</b> al final.</p>
       </div>
       <button class="btn alt lg" id="btn-empezar" style="margin-top:22px;" onclick="empezar()">Empezar</button>
     </section>
@@ -55,7 +55,7 @@
     <section id="v-done" class="hidden">
       <span class="tag">Listo</span>
       <h1 style="margin:12px 0 14px;">¡Gracias! Tu solicitud ya fue enviada.</h1>
-      <p style="color:var(--ink-soft);max-width:52ch;" id="done-note">Tu agente la recibió y la va a revisar. Si falta algo, se pone en contacto con vos.</p>
+      <p style="color:var(--ink-soft);max-width:52ch;" id="done-note">Tu agente la recibió y la va a revisar. Si falta algo, se pondrá en contacto contigo.</p>
       <div id="done-msg"></div>
     </section>
 
@@ -93,7 +93,7 @@ async function init(){
       fetch(`/api/sessions/${SID}/meta`),
       fetch(`/api/sessions/${SID}/pdf`)
     ]);
-    if (!metaRes.ok || !pdfRes.ok) throw new Error('Este link no existe o venció. Pedile a tu agente que te mande uno nuevo.');
+    if (!metaRes.ok || !pdfRes.ok) throw new Error('Este enlace no existe o venció. Pídele a tu agente que te envíe uno nuevo.');
     META = await metaRes.json();
     SCHEMA = META.schema;
     const bytes = new Uint8Array(await pdfRes.arrayBuffer());
@@ -104,8 +104,8 @@ async function init(){
     $('load-bar').style.width = '100%';
 
     $('i-titulo').textContent = `Hola, ${META.clientName}`;
-    $('i-texto').textContent = (META.agentName ? `${META.agentName} te mandó` : 'Tu agente de seguros te mandó')
-      + ` esta solicitud para completar. Al terminar, le llega directo para revisarla — vos no tenés que imprimir ni enviar nada.`;
+    $('i-texto').textContent = (META.agentName ? `${META.agentName} te envió` : 'Tu agente de seguros te envió')
+      + ` esta solicitud para completar. Al terminar, le llega directo para revisarla — tú no tienes que imprimir ni enviar nada.`;
     $('top-sub').textContent = META.clientName;
     show('v-intro');
   } catch(e){
@@ -126,8 +126,8 @@ function renderStep(){
   $('f-steplbl').textContent = `Paso ${STEP+1} de ${SCHEMA.steps.length}`;
   $('f-title').textContent = step.title;
   $('f-lede').textContent = step.signatures
-    ? 'Dibujá tu firma con el dedo o el mouse. Si preferís firmar en papel, saltealo: tu agente lo resuelve con vos.'
-    : 'Completá lo que aplique a tu caso. Nada es obligatorio.';
+    ? 'Dibuja tu firma con el dedo o el mouse. Si prefieres firmar en papel, sáltalo: tu agente lo resuelve contigo.'
+    : 'Completa lo que aplique a tu caso. Nada es obligatorio.';
 
   let html = '';
   (step.questions||[]).forEach((q,idx) => {
@@ -240,13 +240,13 @@ async function enviar(){
     const data = await res.json();
     $('navbar').classList.add('hidden');
     if (data.emailed === false)
-      $('done-note').textContent = 'Tu solicitud quedó guardada y tu agente puede verla desde su panel. Si falta algo, se pone en contacto con vos.';
+      $('done-note').textContent = 'Tu solicitud quedó guardada y tu agente puede verla desde su panel. Si falta algo, se pondrá en contacto contigo.';
     msg('done-msg', sigWarning
-      ? 'La firma dibujada no se pudo estampar en este archivo protegido; el resto de tus respuestas llegó completo. Tu agente lo resuelve con vos.'
+      ? 'La firma dibujada no se pudo estampar en este archivo protegido; el resto de tus respuestas llegó completo. Tu agente lo resuelve contigo.'
       : '', 'warn');
     show('v-done');
   } catch(e){
-    msg('f-msg','No se pudo enviar: ' + (e.message||e) + '. Probá de nuevo en un momento.', 'err');
+    msg('f-msg','No se pudo enviar: ' + (e.message||e) + '. Intenta de nuevo en un momento.', 'err');
   } finally { btn.disabled = false; btn.textContent = 'Enviar a mi agente'; }
 }
 
