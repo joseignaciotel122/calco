@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Completa tu solicitud — CalcoForms</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -122,7 +122,12 @@ function qKey(q,i){ return CalcoCore.qKey(q,i); }
 
 function renderStep(){
   const step = SCHEMA.steps[STEP];
-  $('f-progress').innerHTML = SCHEMA.steps.map((s,i)=>`<i class="${i<STEP?'done':i===STEP?'now':''}"></i>`).join('');
+  if (SCHEMA.steps.length > 14){
+    const pct = Math.round(((STEP+1)/SCHEMA.steps.length)*100);
+    $('f-progress').innerHTML = `<div class="bar" style="margin:0;flex:1;"><i style="width:${pct}%;"></i></div>`;
+  } else {
+    $('f-progress').innerHTML = SCHEMA.steps.map((s,i)=>`<i class="${i<STEP?'done':i===STEP?'now':''}"></i>`).join('');
+  }
   $('f-steplbl').textContent = `Paso ${STEP+1} de ${SCHEMA.steps.length}`;
   $('f-title').textContent = step.title;
   $('f-lede').textContent = step.signatures

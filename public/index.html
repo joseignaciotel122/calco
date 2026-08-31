@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CalcoForms — Prepara el formulario para tu cliente</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -196,6 +196,7 @@
         <b style="font-size:16px;">Enlace para tu cliente</b>
         <p style="color:var(--ink-soft);font-size:14px;margin:4px 0 0;">Compártelo por WhatsApp o correo. Cuando termine, el PDF completo te llega a tu correo.</p>
         <div class="linkbox"><input type="text" id="l-cliente" readonly><button class="btn sm" onclick="copyLink('l-cliente', this)">Copiar</button></div>
+        <a class="btn alt sm" id="l-wa" target="_blank" rel="noopener" style="margin-top:10px;">Enviar por WhatsApp</a>
       </div>
       <div class="card" style="margin-top:16px;">
         <b style="font-size:16px;">Tu panel de seguimiento</b>
@@ -407,6 +408,8 @@ $('c-crear').addEventListener('click', async () => {
     $('l-cliente').value = data.clientUrl;
     $('l-panel').value = data.panelUrl;
     $('l-abrir-panel').href = data.panelUrl;
+    $('l-wa').href = 'https://wa.me/?text=' + encodeURIComponent(
+      'Hola ' + cliente + ': te envío el formulario para completar tu solicitud de seguro. Se responde desde el teléfono, paso a paso: ' + data.clientUrl);
     showFlow('v-links');
   } catch(e){
     msg('c-msg','No se pudo crear el enlace: ' + (e.message||e), 'err');
