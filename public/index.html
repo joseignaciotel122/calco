@@ -332,14 +332,19 @@ function renderReview(){
     </div>`).join('');
 
   $('r-sigcard').classList.toggle('hidden', !sigs.length);
-  $('r-sigs').innerHTML = sigs.map((s,i) => `
+  $('r-sigs').innerHTML = sigs.map((s,i) => {
+    const badge = s.kind === 'agent' ? ' · <b>firma del agente — no va al cliente</b>'
+                : s.kind === 'client' ? ' · la firma tu cliente'
+                : ' · <b>no pudimos identificar de quién es: revísala</b>';
+    return `
     <div class="rrow${s.internal?' internal':''}">
       <input type="checkbox" data-s="${i}" ${s.internal?'':'checked'}>
       <div class="rmain">
-        <div style="font-size:14.5px;font-weight:600;">${esc(s.id)}</div>
-        <div class="rmeta">Pág. ${(s.page??0)+1}${s.internal?' · <b>parece del agente</b>':''}</div>
+        <div style="font-size:14.5px;font-weight:600;">${esc(s.label || s.id)}</div>
+        <div class="rmeta">Pág. ${(s.page??0)+1}${badge}</div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   updateReviewCount();
   $('r-list').addEventListener('change', updateReviewCount);
@@ -366,7 +371,9 @@ $('r-continue').addEventListener('click', () => {
   });
   const sigs = [];
   document.querySelectorAll('#r-sigs input[type=checkbox]').forEach(c => {
-    if (c.checked) sigs.push({ id: ANALYSIS.sigs[Number(c.dataset.s)].id });
+    if (!c.checked) return;
+    const s = ANALYSIS.sigs[Number(c.dataset.s)];
+    sigs.push({ id: s.id, label: s.label || null });
   });
   if (!chosen.length && !sigs.length){ msg('r-msg','Marca al menos una pregunta para tu cliente.','err'); return; }
   msg('r-msg','','');

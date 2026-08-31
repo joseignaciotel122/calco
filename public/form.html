@@ -146,7 +146,8 @@ function renderStep(){
     }
   });
   (step.signatures||[]).forEach((s,i) => {
-    html += `<div class="q sigwrap"><label>Firma ${i+1}</label>
+    const sigLabel = (s.label || ('Firma ' + (i+1))).replace(/[<>&"]/g,'');
+    html += `<div class="q sigwrap"><label>${sigLabel}</label>
       <canvas id="sig${i}" width="600" height="150" data-fid="${s.id}"></canvas>
       <button class="btn ghost sm" style="margin-top:8px;" onclick="clearSig(${i})">Borrar</button></div>`;
   });

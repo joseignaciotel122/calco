@@ -309,16 +309,61 @@ CalcoCore.buildQuestions = function(items, texts){
   return out;
 };
 
+// Rótulo impreso junto a un campo de firma: primero el texto pegado al campo
+// (arriba, abajo o apenas a la izquierda); si por ahí no aparece la palabra
+// "firma", se prueba con una ventana más ancha.
+function sigLabelFor(texts, s){
+  const T = texts[s.page] || [];
+  const x0 = s.x, x1 = s.x + s.w, yTop = s.y + s.h, yBot = s.y;
+  function scan(leftPad){
+    const cands = [];
+    const ys = [...new Set(T.map(t => t.y))];
+    for (const yy of ys){
+      if (yy > yTop + 45 || yy < yBot - 28) continue;
+      const frs = T.filter(t => Math.abs(t.y - yy) <= 2 && t.x > x0 - leftPad && t.x < x1 + 15)
+                   .sort((a,b) => a.x - b.x);
+      const txt = frs.map(t => t.s).join(' ').replace(/\s+/g,' ').trim();
+      if (!txt || !/[a-zA-ZáéíóúñÁÉÍÓÚÑ]{3}/.test(txt)) continue;
+      const dist = Math.min(Math.abs(yy - yTop), Math.abs(yy - yBot));
+      cands.push({ txt, dist, firma: /firma/i.test(txt) ? 1 : 0 });
+    }
+    cands.sort((a,b) => (b.firma - a.firma) || (a.dist - b.dist));
+    return cands.length ? cands[0] : null;
+  }
+  let best = scan(45);
+  if (!best || !best.firma){
+    const wide = scan(280);
+    if (wide && wide.firma) best = wide;
+  }
+  if (!best) return null;
+  let out = best.txt;
+  // si en la misma línea sigue otro rótulo ("Firma del titular: 3. Lugar y fecha…"),
+  // nos quedamos con lo de antes de los dos puntos
+  const cut = out.split(/[:：]/)[0];
+  if (/firma/i.test(cut)) out = cut;
+  return out.replace(/^\s*\d+\s*[.)-]?\s*/,'').replace(/[:：]\s*$/,'').trim();
+}
+
+const SIG_AGENT_RE = /agente|corredor|broker|productor|agencia|representante de ventas/i;
+const SIG_CLIENT_RE = /titular|solicitante|asegurad|contratante|c[oó]nyuge|conyuge|cliente|propuest|dependiente|padre|madre|tutor/i;
+
 // Análisis completo para el paso de revisión del agente:
-// preguntas + firmas, cada una con su marca "internal" (no la llena el cliente).
+// preguntas + firmas con rótulo impreso y clasificación (cliente / agente / a revisar).
 CalcoCore.analyze = function(items, texts){
   const markers = CalcoCore.internalMarkers(texts);
   const questions = CalcoCore.buildQuestions(items, texts);
-  const sigs = items.filter(i => i.type === 'signature').map(s => ({
-    id: s.id, page: s.page,
-    internal: (markers[s.page]||[]).some(my => my > s.y + s.h - 2)
-              || INTERNAL_LABEL_RE.test(String(s.id))
-  }));
+  const sigs = items.filter(i => i.type === 'signature').map(s => {
+    const label = sigLabelFor(texts, s);
+    const ref = (label || '') + ' ' + String(s.id);
+    const belowMarker = (markers[s.page]||[]).some(my => my > s.y + s.h - 2);
+    const kind = (SIG_AGENT_RE.test(ref) || belowMarker) ? 'agent'
+               : SIG_CLIENT_RE.test(ref) ? 'client' : 'unknown';
+    return {
+      id: s.id, page: s.page, label,
+      kind,
+      internal: kind === 'agent' || INTERNAL_LABEL_RE.test(ref)
+    };
+  });
   return { questions, sigs };
 };
 
