@@ -224,11 +224,28 @@
   </div>
 </div>
 
-<script src="/vendor/pdf-lib.min.js"></script>
-<script src="/vendor/pdf.min.js"></script>
-<script src="/calco-core.js"></script>
 <script>
-pdfjsLib.GlobalWorkerOptions.workerSrc = "/vendor/pdf.worker.min.js";
+/* Los motores PDF (~860KB) se cargan recién cuando el agente entra al flujo:
+   la landing queda liviana para quien solo mira. */
+let __libs = null;
+function loadScript(src){
+  return new Promise((res, rej) => {
+    const sc = document.createElement('script');
+    sc.src = src; sc.onload = res;
+    sc.onerror = () => rej(new Error('No se pudo cargar ' + src));
+    document.head.appendChild(sc);
+  });
+}
+function ensureLibs(){
+  if (!__libs) __libs = (async () => {
+    await Promise.all([loadScript('/vendor/pdf-lib.min.js'), loadScript('/vendor/pdf.min.js')]);
+    await loadScript('/calco-core.js');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "/vendor/pdf.worker.min.js";
+  })();
+  return __libs;
+}
+</script>
+<script>
 
 const $ = id => document.getElementById(id);
 function msg(box, text, kind){ $(box).innerHTML = text ? `<div class="msg ${kind}">${text}</div>` : ''; }
@@ -246,6 +263,7 @@ function startFlow(){
   $('v-landing').classList.add('hidden');
   $('v-flow').classList.remove('hidden');
   window.scrollTo({top:0});
+  ensureLibs(); // pre-carga en segundo plano mientras eligen el archivo
 }
 
 function askPassword(wrong){
@@ -276,6 +294,8 @@ async function handleFile(file){
   $('a-log').innerHTML=''; $('a-bar').style.width='0';
 
   try {
+    $('a-status').textContent = 'Preparando el motor';
+    await ensureLibs();
     $('a-status').textContent = 'Abriendo el documento';
     const state = await CalcoCore.open(PDF_BYTES, askPassword);
     logLine(state.engine === 'js' ? 'Documento protegido: usando el motor para archivos encriptados' : 'Documento sin protección', true);
