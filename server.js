@@ -95,9 +95,15 @@ const validId = s => typeof s === 'string' && /^[A-Za-z0-9_-]{8,32}$/.test(s);
 
 /* ---------- app ---------- */
 const app = express();
+app.use(require('compression')());        // gzip: las librerías PDF pasan de ~1.9MB a ~570KB
 app.use(express.json({ limit: '40mb' }));
 app.use(express.raw({ type: 'application/pdf', limit: '40mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+// vendor no cambia nunca: cache de 1 año; el resto 5 min; los HTML siempre revalidan
+app.use('/vendor', express.static(path.join(__dirname, 'public', 'vendor'), { maxAge: '365d', immutable: true }));
+app.use(express.static(path.join(__dirname, 'public'), {
+  maxAge: '5m',
+  setHeaders: (res, p) => { if (p.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache'); }
+}));
 
 // El agente crea una sesión: PDF original + esquema de preguntas + su correo
 app.post('/api/sessions', (req, res) => {
