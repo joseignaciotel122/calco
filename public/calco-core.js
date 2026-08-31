@@ -145,7 +145,9 @@ CalcoCore.internalMarkers = function(texts){
 };
 
 CalcoCore.buildQuestions = function(items, texts){
-  items.sort((a,b) => a.page-b.page || b.y-a.y || a.x-b.x);
+  // y en baldes de 4px: campos de una misma fila suelen bailar 1-2px y
+  // el orden de lectura (y el agrupado de casillas vecinas) se rompía.
+  items.sort((a,b) => a.page-b.page || Math.round(b.y/4)-Math.round(a.y/4) || a.x-b.x);
   const fillable = items.filter(i => i.type !== 'signature');
 
   const groups = [];
@@ -179,6 +181,24 @@ CalcoCore.buildQuestions = function(items, texts){
     else if (g.fields.length>=3) qs.push({ f:g.fields[0], comb:g.fields });
     else { g.fields.forEach(f=>qs.push({ f, comb:null })); }
   }
+
+  // Casillas vecinas en la misma línea (Sexo: [M] [F], unidades [kg] [lbs]…)
+  // se agrupan en UNA pregunta de opciones: el cliente elige una, no ve dos casillas sueltas.
+  const merged = [];
+  for (let i = 0; i < qs.length; i++){
+    const cur = qs[i];
+    if (cur.comb || cur.f.type !== 'checkbox'){ merged.push(cur); continue; }
+    const grp = [cur.f];
+    while (i + 1 < qs.length){
+      const nf = qs[i+1].f;
+      if (qs[i+1].comb || nf.type !== 'checkbox') break;
+      const last = grp[grp.length-1];
+      if (nf.page !== last.page || Math.abs(nf.y - last.y) > 6 || (nf.x - last.x) > 45 || nf.x <= last.x) break;
+      grp.push(nf); i++;
+    }
+    merged.push(grp.length > 1 ? { f: grp[0], cbGroup: grp } : cur);
+  }
+  qs.length = 0; qs.push(...merged);
 
   const T = p => texts[p]||[];
   const isLabelish = s => /[:：]\s*$/.test(s) || /\?\s*$/.test(s) || /^\s*¿/.test(s) || /^\s*\d+\s*[.)]/.test(s);
@@ -265,9 +285,40 @@ CalcoCore.buildQuestions = function(items, texts){
 
   const clean = s => s ? s.replace(/^\s*\d+\s*[.)-]?\s*/,'').replace(/[:：]\s*$/,'').trim() : s;
 
+  // Rótulo pegado a la DERECHA de una casilla, cortado donde empieza el
+  // próximo widget de la línea (así "Cédula  [ ] Pasaporte" no se mezcla).
+  function rightLabel(f){
+    const others = ALL_SPOTS[f.page] || [];
+    let next = Infinity;
+    for (const o of others)
+      if (Math.abs(o.y - f.y) <= 8 && o.x > f.x + 4 && o.x < next) next = o.x;
+    const frs = T(f.page).filter(t => t.y >= f.y - 5 && t.y <= f.y + f.h + 6 &&
+                                      t.x > f.x + f.w - 2 && t.x < Math.min(f.x + f.w + 170, next - 4));
+    const s = joinLine(frs);
+    return (s && /[a-zA-Z0-9áéíóúñÁÉÍÓÚÑ]/.test(s)) ? s : null;
+  }
+
   const markers = CalcoCore.internalMarkers(texts);
   const out = [];
-  for (const {f, comb} of qs){
+  for (const {f, comb, cbGroup} of qs){
+    if (cbGroup){
+      const bbox = {
+        x0: Math.min(...cbGroup.map(z=>z.x)), x1: Math.max(...cbGroup.map(z=>z.x+z.w)),
+        y0: Math.min(...cbGroup.map(z=>z.y)), y1: Math.max(...cbGroup.map(z=>z.y+z.h))
+      };
+      const options = cbGroup.map((z,i) => clean(rightLabel(z)) || ('Opción ' + (i+1)));
+      let gl = clean(labelFor(f, bbox));
+      // si el rótulo de arriba es una de las opciones, una máscara de fecha o basura,
+      // usamos las opciones como título
+      const basura = !gl || gl.length < 3 || options.some(o => gl === o)
+                     || /^[\sDMAY/.\-*]+$/i.test(gl) || !/[a-zA-ZáéíóúñÁÉÍÓÚÑ]{2}/.test(gl)
+                     || /\b(D\s?D|M\s?M|A\s?A(\s?A\s?A)?)\b/.test(gl);
+      if (basura) gl = options.join(' / ');
+      out.push({ label: gl, type:'choice', fields: cbGroup.map(z=>z.id), options,
+                 page: f.page,
+                 internal: (markers[f.page]||[]).some(my => my > bbox.y1 - 2) || INTERNAL_LABEL_RE.test(gl) });
+      continue;
+    }
     const flds = comb || [f];
     const bbox = {
       x0: Math.min(...flds.map(z=>z.x)), x1: Math.max(...flds.map(z=>z.x+z.w)),
@@ -282,21 +333,44 @@ CalcoCore.buildQuestions = function(items, texts){
       out.push({ label: label || clean(String(f.id)), type:'choice', fields:[f.id],
                  options: options.length?options:['Sí','No'] });
     } else if (f.type==='checkbox'){
-      out.push({ label: label || clean(String(f.id)) || 'Casilla', type:'choice', fields:[f.id], options:['Marcar'] });
+      const rl = clean(rightLabel(f));
+      out.push({ label: rl || label || clean(String(f.id)) || 'Casilla', type:'choice', fields:[f.id], options:['Marcar'] });
     } else if (f.type==='select'){
       out.push({ label: label || clean(String(f.id)), type:'choice', fields:[f.id],
                  options:(f.options||[]).map(o=>String(o??'')).filter(Boolean) });
     } else if (comb){
-      const inside = T(f.page)
-        .filter(t => t.x>=bbox.x0-6 && t.x<=bbox.x1+6 && t.y>=bbox.y0-4 && t.y<=bbox.y1+6)
-        .sort((a,b)=>a.x-b.x).map(t=>t.s).join('').replace(/\s+/g,'');
-      const isDate = /M+.{0,3}D+.{0,3}A+|D+.{0,3}M+.{0,3}A+/i.test(inside) || /fecha/i.test(label||'');
+      // solo fragmentos que son máscara pura (MM, DD, AAAA, A A…): así "Edad"
+      // u otros rótulos dentro del área no contaminan el orden de la fecha
+      const maskToks = T(f.page)
+        .filter(t => t.x>=bbox.x0-8 && t.x<=bbox.x1+8 && t.y>=bbox.y0-4 && t.y<=bbox.y1+8
+                     && /^[DMAY\s/]{1,6}$/i.test(t.s) && /[DMAY]/i.test(t.s))
+        .sort((a,b)=>a.x-b.x)
+        .map(t => t.s.replace(/[^DMAYdmay]/g,'').toUpperCase().replace(/Y/g,'A'))
+        .filter(Boolean);
+      const maskSeq = maskToks.map(t=>t[0]).join('');
+      const pos = ['D','M','A'].map(c => ({ c, i: maskSeq.indexOf(c) })).filter(p => p.i >= 0);
+      const hasMask = pos.length === 3;
+      const isDate = hasMask || /fecha/i.test(label||'');
+      const dateOrder = hasMask ? pos.sort((a,b)=>a.i-b.i).map(p=>p.c).join('') : 'DMA';
+      // ¿la máscara reparte un dígito por cajita (M M D D A A A A) o un grupo
+      // entero por cajita (DD | MM | AAAA)? Depende de cuántas letras hay por token.
+      const letras = maskToks.reduce((a,t)=>a+t.length, 0);
+      const dateTokens = (hasMask && letras !== comb.length && maskToks.length <= comb.length)
+        ? maskToks.map(t=>t[0]) : undefined;
       out.push({ label: label || 'Dato', type: isDate?'date':'text', fields: comb.map(z=>z.id),
-                 dayFirst: isDate ? /^D/i.test(inside) : undefined,
+                 dateOrder: isDate ? dateOrder : undefined,
+                 dateTokens: isDate ? dateTokens : undefined,
+                 dayFirst: isDate ? dateOrder.startsWith('D') : undefined,
                  hint: (!isDate && comb.length>2) ? `Un carácter por casilla (${comb.length} casillas)` : '' });
     } else {
       const lt = f.h>34 || /expli|detall|describ|coment/i.test(label||'');
-      out.push({ label: label || clean(String(f.id)), type: lt?'longtext':'text', fields:[f.id] });
+      // campo simple rotulado como fecha: calendario para el cliente y formato correcto al escribir
+      if (!lt && /\bfecha\b/i.test(label||'') && f.w < 260){
+        out.push({ label: label || clean(String(f.id)), type: 'date', fields:[f.id],
+                   dateFmt: /mes\s*\/\s*d[ií]a|mm\s*\/\s*dd/i.test(label||'') ? 'MDY' : 'DMY' });
+      } else {
+        out.push({ label: label || clean(String(f.id)), type: lt?'longtext':'text', fields:[f.id] });
+      }
     }
     // ¿Este dato está debajo de un encabezado de uso interno, o su rótulo delata que es del agente?
     const q = out[out.length-1];
@@ -394,11 +468,27 @@ function applyAnswers(schema, answers, write){
       const val = answers[qKey(q, si*100+idx)];
       if (val===undefined || val==='') return;
       if (q.type==='choice'){
-        write.choice(q.fields[0], Number(val));
+        if (q.fields.length > 1){
+          // grupo de casillas (Sexo M/F): se marca la casilla de la opción elegida
+          const id = q.fields[Number(val)];
+          if (id !== undefined) write.choice(id, 0);
+        } else {
+          write.choice(q.fields[0], Number(val));
+        }
       } else if (q.type==='date' && q.fields.length>1){
-        const p = String(val).split('-'); if (p.length<3) return;
-        const digits = q.dayFirst ? p[2]+p[1]+p[0] : p[1]+p[2]+p[0];
-        q.fields.forEach((id,i)=>write.text(id, digits[i]||''));
+        const p = String(val).split('-'); if (p.length<3) return;    // p = [AAAA, MM, DD]
+        const part = { A: p[0], M: p[1], D: p[2] };
+        if (q.dateTokens){
+          // un grupo por cajita: DD | MM | AAAA
+          q.fields.forEach((id,i)=>{ const c = q.dateTokens[i]; write.text(id, c ? (part[c]||'') : ''); });
+        } else {
+          const order = q.dateOrder || (q.dayFirst ? 'DMA' : 'MDA');
+          const digits = order.split('').map(c => part[c] || '').join('');
+          q.fields.forEach((id,i)=>write.text(id, digits[i]||''));
+        }
+      } else if (q.type==='date' && q.fields.length===1 && /^\d{4}-\d{2}-\d{2}$/.test(String(val))){
+        const [a,m,d] = String(val).split('-');
+        write.text(q.fields[0], q.dateFmt === 'MDY' ? `${m}/${d}/${a}` : `${d}/${m}/${a}`);
       } else if (q.fields.length>1){
         const digits = String(val).replace(/\s/g,'');
         q.fields.forEach((id,i)=>write.text(id, digits[i]||''));
@@ -416,7 +506,17 @@ async function generateWithPdfLib(state, schema, answers, sigs, flags){
   const touched = new Set();
 
   applyAnswers(schema, answers, {
-    text: (id,v) => { try{ form.getTextField(id).setText(clean_(v)); touched.add(id); }catch(e){} },
+    text: (id,v) => { try{
+      const tf = form.getTextField(id);
+      const s = clean_(v);
+      tf.setText(s); touched.add(id);
+      // respuesta larga en casillero chico: achicamos la letra para que no se corte
+      try {
+        const r = tf.acroField.getWidgets()[0].getRectangle();
+        const cabe = Math.max(4, Math.floor(r.width / 5.5));
+        if (s.length > cabe) tf.setFontSize(Math.min(9, Math.max(5, Math.floor((r.width * 1.7) / s.length))));
+      } catch(e){}
+    }catch(e){} },
     choice: (id,i) => {
       try{
         const rg = form.getRadioGroup(id), o = rg.getOptions();

@@ -327,7 +327,7 @@ function renderReview(){
         <input type="text" class="rlab" data-lab="${i}" value="${esc(q.label)}">
         <div class="rmeta">Pág. ${(q.page??0)+1} · ${q.type==='choice' ? 'opciones: '+esc((q.options||[]).join(' / ')).slice(0,80)
           : q.type==='date' ? 'fecha' : q.type==='longtext' ? 'texto largo'
-          : q.fields.length>1 ? q.fields.length+' casillas' : 'texto'}${q.internal?' · <b>parece del agente</b>':''}</div>
+          : q.fields.length>1 ? q.fields.length+' casillas' : 'texto'}${q.internal?' · <b>parece del agente</b>':''}${/^(text|texto|campo|check ?box|cuadro combinado|casilla)[ 0-9]*$/i.test(q.label)?' · <b>sin rótulo claro: escríbelo tú</b>':''}</div>
       </div>
     </div>`).join('');
 
@@ -367,7 +367,8 @@ $('r-continue').addEventListener('click', () => {
     const i = Number(c.dataset.q), q = ANALYSIS.questions[i];
     const lab = document.querySelector(`input[data-lab="${i}"]`);
     chosen.push({ label: (lab && lab.value.trim()) || q.label, type: q.type,
-                  fields: q.fields, options: q.options, hint: q.hint, dayFirst: q.dayFirst });
+                  fields: q.fields, options: q.options, hint: q.hint,
+                  dayFirst: q.dayFirst, dateOrder: q.dateOrder, dateTokens: q.dateTokens, dateFmt: q.dateFmt });
   });
   const sigs = [];
   document.querySelectorAll('#r-sigs input[type=checkbox]').forEach(c => {
